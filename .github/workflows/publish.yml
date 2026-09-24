@@ -1,0 +1,49 @@
+name: publish
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Central time. GitHub cron is UTC, so windows are padded to cover both DST offsets.
+    - cron: "0 14 * * 2"        # Tue 9:00 AM CDT, after MNF settles
+    - cron: "0 15 * * 2"        # Tue 9:00 AM CST
+    - cron: "0 21 * * 4"        # Thu 4:00 PM CDT, before TNF
+    - cron: "0 22 * * 4"        # Thu 4:00 PM CST
+    - cron: "*/15 0-5 * * 5"    # Thu night games
+    - cron: "*/15 16-23 * * 0"  # Sunday afternoon and evening
+    - cron: "*/15 0-5 * * 1"    # Sunday night
+    - cron: "*/15 0-5 * * 2"    # Monday night
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Build the page
+        run: python build.py --out site/index.html
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
