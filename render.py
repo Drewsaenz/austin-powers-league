@@ -74,7 +74,7 @@ section { animation:rise .45s cubic-bezier(.2,.7,.3,1) both; }
   .dot { animation:none; }
 }
 
-h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; white-space:nowrap;
   font-variation-settings:"wdth" 112,"wght" 700; }
 .head { display:flex; align-items:baseline; gap:12px; margin-bottom:12px; }
 .head .rule { flex:1; height:1px; background:var(--line); }
@@ -85,19 +85,22 @@ h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.16em; text-trans
 
 /* scoreboard */
 .games { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:12px; }
-.game { padding:14px 16px 16px; }
-.game .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
-.game .nm { font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.game .row.ahead .nm { font-weight:700; }
-.game .pts { font-size:21px; font-weight:700; font-variation-settings:"wdth" 108,"wght" 700; white-space:nowrap; }
-.game .row.ahead .pts { color:var(--ink); }
-.game .row .pts { color:var(--muted); }
-.game .row.ahead.away .pts { color:var(--red); }
-.game .row.ahead.home .pts { color:var(--blue); }
-.game .best { display:flex; justify-content:space-between; gap:12px; font-size:12px; color:var(--muted); margin-top:2px; }
+.game { padding:14px 16px 15px; display:flex; flex-direction:column; }
+.teams, .tally { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.teams { align-items:start; }
+.tally { align-items:start; margin-top:2px; }
+.teams .home, .tally .home { text-align:right; }
+.nm { font-size:14px; line-height:1.25; font-weight:600; color:var(--muted); }
+.nm.lead { color:var(--ink); font-weight:700; }
+.pts { display:block; font-size:23px; line-height:1.15; font-weight:700;
+  font-variation-settings:"wdth" 108,"wght" 700; color:var(--muted); }
+.tally .away.lead .pts { color:var(--red); }
+.tally .home.lead .pts { color:var(--blue); }
+.detail { display:block; font-size:12px; color:var(--muted); line-height:1.4;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* the margin bar: center is a tie, the fill runs toward whoever leads */
-.bar { position:relative; height:12px; border-radius:6px; background:var(--sunk); margin:12px 0 6px; }
+.bar { position:relative; height:12px; border-radius:6px; background:var(--sunk); margin:11px 0 10px; }
 .bar i { position:absolute; top:0; bottom:0; }
 .bar i.away { background:var(--red); border-radius:6px 0 0 6px; }
 .bar i.home { background:var(--blue); border-radius:0 6px 6px 0; }
@@ -105,7 +108,8 @@ h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.16em; text-trans
 .bar .tick { position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink); border-radius:1px; transform:translateX(-1px); opacity:.55; }
 .game.pre .bar i { opacity:.5; }
 .game.pre .bar .tick { display:none; }
-.verdict { font-size:12px; font-weight:600; letter-spacing:.02em; margin-bottom:10px; }
+.verdict { text-align:center; font-size:12px; font-weight:600; margin-top:auto;
+  padding-top:11px; margin-bottom:-1px; border-top:1px solid var(--line); }
 .verdict.away { color:var(--red); } .verdict.home { color:var(--blue); }
 .verdict.tied { color:var(--muted); }
 
@@ -144,6 +148,9 @@ a { color:inherit; }
   .game { padding:13px 14px 14px; }
   th, td { padding:8px 8px; }
   .byweek { display:none; }
+  .head { display:block; }
+  .head .rule { display:none; }
+  .head .note { display:block; margin-top:3px; }
   .move { grid-template-columns:auto 1fr; }
   .move .when { grid-column:2; }
 }
@@ -191,37 +198,40 @@ MARGIN_CAP = 35.0   # a 35 point win fills the bar; anything past that is alread
 
 
 def matchup(m):
-    """One game as a margin bar. Center is a tie, the fill runs toward whoever leads,
-    and the mark is where the projection has the margin finishing."""
+    """One game: both teams across the top, a bar that leans toward whoever leads, scores below.
+    The mark on the bar is where the projection has the margin finishing."""
     live = (m.home_pts + m.away_pts) > 0
     lead = m.home_pts - m.away_pts if live else m.home_proj - m.away_proj
     plead = m.home_proj - m.away_proj
+    side = "home" if lead > 0 else "away" if lead < 0 else "tied"
+    call = verdict_text(m, live, lead, side)
 
     def reach(margin):
         return min(abs(margin) / MARGIN_CAP, 1.0) * 50
 
-    side = "home" if lead > 0 else "away" if lead < 0 else "tied"
     fill = ""
     if side == "home":
         fill = f'<i class="home" style="left:50%;width:{reach(lead):.1f}%"></i>'
     elif side == "away":
         fill = f'<i class="away" style="right:50%;width:{reach(lead):.1f}%"></i>'
     tick = 50 + reach(plead) * (1 if plead > 0 else -1)
-    bar = (f'<div class="bar" role="img" aria-label="{esc(verdict_text(m, live, lead, side))}">'
-           f'{fill}<span class="mid"></span><span class="tick" style="left:{tick:.1f}%"></span></div>')
+    bar = (f'<div class="bar" role="img" aria-label="{esc(call)}">{fill}'
+           f'<span class="mid"></span><span class="tick" style="left:{tick:.1f}%"></span></div>')
 
-    rows = []
+    names, tally = [], []
     for which in ("away", "home"):
+        won = " lead" if live and side == which else ""
         pts, proj = getattr(m, f"{which}_pts"), getattr(m, f"{which}_proj")
-        ahead = " ahead" if live and side == which else ""
         top = getattr(m, f"{which}_top")
-        rows.append(
-            f'<div class="row {which}{ahead}"><span class="nm">{esc(getattr(m, which))}</span>'
-            f'<span class="pts">{pts:.1f}</span></div>'
-            f'<div class="best"><span>{esc(top)}</span><span>proj {proj:.0f}</span></div>')
+        best = f'<span class="detail">{esc(top)}</span>' if top else ""
+        names.append(f'<div class="nm {which}{won}">{esc(getattr(m, which))}</div>')
+        tally.append(f'<div class="{which}{won}"><span class="pts">{pts:.1f}</span>'
+                     f'<span class="detail">proj {proj:.0f}</span>{best}</div>')
 
-    return (f'<div class="card game{"" if live else " pre"}">{rows[0]}{bar}'
-            f'<div class="verdict {side}">{esc(verdict_text(m, live, lead, side))}</div>{rows[1]}</div>')
+    return (f'<div class="card game{"" if live else " pre"}">'
+            f'<div class="teams">{"".join(names)}</div>{bar}'
+            f'<div class="tally">{"".join(tally)}</div>'
+            f'<div class="verdict {side}">{esc(call)}</div></div>')
 
 
 def verdict_text(m, live, lead, side):
@@ -238,7 +248,8 @@ def scoreboard(lg):
     if not lg.matchups:
         return ""
     live = any((m.home_pts + m.away_pts) > 0 for m in lg.matchups)
-    note = "Bar is live points. The mark is the projected finish." if live else "Bars are projections. Nobody has played yet."
+    note = ("The bar leans toward whoever leads. The mark is the projected finish." if live
+            else "Bars show the projected margin. Nobody has played yet.")
     return (f'<section style="animation-delay:.02s">{head(f"Week {lg.week}", note)}'
             f'<div class="games">{"".join(matchup(m) for m in lg.matchups)}</div></section>')
 
