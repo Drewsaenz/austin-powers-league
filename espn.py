@@ -74,6 +74,8 @@ class League:
     matchups: list = field(default_factory=list)
     moves: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
+    live_games: int = 0                  # NFL games under way right now
+    next_kickoff: Optional[datetime] = None
 
     def standings(self):
         return sorted(self.teams, key=lambda t: (-t.wins, -t.pf))
@@ -93,6 +95,17 @@ def kickoffs(lg, week):
         if abbr and ms:
             out[abbr] = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
     return out
+
+
+GAME_LENGTH = 3 * 3600 + 15 * 60   # a little over three hours, long enough to cover overtime
+
+
+def game_clock(kicks, now):
+    """(games under way, next kickoff). One kickoff time covers both teams in a game, so dedupe."""
+    times = sorted(set(kicks.values()))
+    live = sum(1 for t in times if 0 <= (now - t).total_seconds() < GAME_LENGTH)
+    upcoming = next((t for t in times if t > now), None)
+    return live, upcoming
 
 
 def streak_of(team):
@@ -174,6 +187,7 @@ def fetch(week=None):
 
     kicks = kickoffs(lg, week)
     now = datetime.now(timezone.utc)
+    out.live_games, out.next_kickoff = game_clock(kicks, now)
     try:
         for b in lg.box_scores(week):
             h_name, h_pts, h_proj, h_top = side(b.home_team, b.home_lineup, kicks, now)

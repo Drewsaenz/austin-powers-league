@@ -6,8 +6,9 @@ GitHub Pages, so anyone in the league can open the link on a phone with nothing 
 
 ## What's on it
 
-- **Week scoreboard** — every matchup, live points, and a projected finish (points already
-  banked, plus projections for anyone who hasn't kicked off), with each side's top scorer.
+- **Week scoreboard** — every matchup as a margin bar. Center is a tie, the fill runs toward
+  whoever leads, and the mark is where the projection has the margin finishing. Under it, in
+  words, who is winning and by how much. Before kickoff the bar shows the projected margin.
 - **Standings** — W-L, PF, PA, weekly average, streak, and a bar per week of the season.
 - **Power rankings** — season average and last three weeks, nudged by record. The number
   beside a team is how far it sits from its spot in the standings.
@@ -19,8 +20,8 @@ GitHub Pages, so anyone in the league can open the link on a phone with nothing 
     cp .env.example .env        # fill in ESPN_S2 and SWID
     .venv/bin/python build.py --out site/index.html
 
-`--week N` rebuilds a past week. Open `site/index.html` straight from disk; there are no
-external assets.
+`--week N` rebuilds a past week. Open `site/index.html` straight from disk; the only external
+request is the Archivo webfont, and the page falls back to the system stack without it.
 
 ## Credentials
 
@@ -44,5 +45,6 @@ The page carries `noindex`, so it won't turn up in search. Anyone with the link 
 
 - `espn.py` — reads the league via [espn-api](https://github.com/cwendt94/espn-api) into
   plain dataclasses. No lineup logic, nothing team-specific.
-- `render.py` — the HTML. Inline CSS, inline SVG sparklines and favicon.
+- `render.py` — the HTML. Inline CSS, inline SVG sparklines and favicon. Light and dark both
+  defined; reduced motion respected.
 - `build.py` — CLI that wires the two together.
